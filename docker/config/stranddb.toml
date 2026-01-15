@@ -1,0 +1,32 @@
+# StrandDB Configuration
+
+[server]
+host = "0.0.0.0"
+port = 7878
+max_connections = 1000
+connection_timeout = 30
+
+[storage]
+data_dir = "/data"
+wal_enabled = true
+wal_sync_interval = 100
+page_size = 4096
+
+[cache]
+max_memory = "1GB"
+eviction_policy = "lru"
+
+[replication]
+enabled = false
+role = "leader"
+followers = []
+
+[metrics]
+enabled = true
+port = 9090
+export_interval = 15
+
+[logging]
+level = "info"
+format = "json"
+output = "stdout"

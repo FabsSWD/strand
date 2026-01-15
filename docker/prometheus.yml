@@ -1,0 +1,10 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: 'stranddb'
+    static_configs:
+      - targets: ['stranddb:9090']
+        labels:
+          service: 'stranddb'

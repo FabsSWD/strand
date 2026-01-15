@@ -3,7 +3,10 @@ use std::collections::HashMap;
 use crc32fast::Hasher;
 use uuid::Uuid;
 
-use toon_format::{DeserializeError, Deserializer, Metadata, Serializer, Token, TokenId, Value};
+use toon_format::{
+    DeserializeError, Deserializer, Metadata, Serializer, Token, TokenId, TokenRef,
+    TokenRefStrength, Value,
+};
 
 fn crc32(bytes: &[u8]) -> u32 {
     let mut hasher = Hasher::new();
@@ -19,6 +22,7 @@ fn round_trip(token: &Token) -> Token {
 #[test]
 fn round_trip_all_value_types() {
     let id = TokenId::from(Uuid::from_bytes([10u8; 16]));
+    let ref_id = TokenId::from(Uuid::from_bytes([15u8; 16]));
     let meta = Metadata::new(0, 0);
 
     let tokens = vec![
@@ -28,6 +32,7 @@ fn round_trip_all_value_types() {
         Token::new(id, Value::Int(-123), meta),
         Token::new(id, Value::Float(1.25), meta),
         Token::new(id, Value::String("".to_string()), meta),
+        Token::new(id, Value::Ref(TokenRef::strong(ref_id)), meta),
         Token::new(
             id,
             Value::Array(vec![Value::Int(1), Value::String("x".to_string())]),
@@ -45,6 +50,15 @@ fn round_trip_all_value_types() {
         assert_eq!(decoded.id(), token.id());
         assert_eq!(decoded.value(), token.value());
         assert_eq!(decoded.metadata(), token.metadata());
+    }
+
+    let bytes = Serializer::new()
+        .serialize(&Token::new(id, Value::Ref(TokenRef::weak(ref_id)), meta))
+        .unwrap();
+    let decoded = Deserializer::new(&bytes).deserialize().unwrap();
+    match decoded.value() {
+        Value::Ref(r) => assert_eq!(r.strength(), TokenRefStrength::Weak),
+        _ => panic!("expected ref"),
     }
 }
 
@@ -112,4 +126,41 @@ fn layout_provides_payload_and_checksum_ranges() {
     assert_eq!(layout.payload_range.end, bytes.len() - 4);
     assert_eq!(layout.checksum_range.start, bytes.len() - 4);
     assert_eq!(layout.checksum_range.end, bytes.len());
+}
+
+fn build_bytes(type_marker: u8, payload: &[u8]) -> Vec<u8> {
+    let version = toon_format::constants::FORMAT_VERSION;
+    let id = [55u8; 16];
+    let payload_len = payload.len() as u32;
+
+    let mut bytes = Vec::new();
+    bytes.push(version);
+    bytes.extend_from_slice(&id);
+    bytes.push(type_marker);
+    bytes.extend_from_slice(&payload_len.to_le_bytes());
+    bytes.extend_from_slice(payload);
+
+    let checksum = crc32(&bytes);
+    bytes.extend_from_slice(&checksum.to_le_bytes());
+    bytes
+}
+
+#[test]
+fn deserialize_rejects_invalid_int_payload_len() {
+    let payload = [0u8; 7];
+    let bytes = build_bytes(toon_format::constants::TYPE_INT64, &payload);
+
+    let err = Deserializer::new(&bytes).deserialize().unwrap_err();
+    assert_eq!(err, DeserializeError::InvalidLength);
+}
+
+#[test]
+fn deserialize_rejects_invalid_reference_strength() {
+    let mut payload = [0u8; 17];
+    payload[0] = 2; // invalid strength
+
+    let bytes = build_bytes(toon_format::constants::TYPE_REF, &payload);
+
+    let err = Deserializer::new(&bytes).deserialize().unwrap_err();
+    assert_eq!(err, DeserializeError::InvalidReferenceStrength);
 }

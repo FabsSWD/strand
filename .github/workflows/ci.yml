@@ -150,8 +150,8 @@ jobs:
       - name: Generate coverage
         run: cargo tarpaulin --workspace --out xml --timeout 300
       
-      - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v5
+      - name: Codecov
+        uses: codecov/codecov-action@v5.5.2
         with:
           files: ./cobertura.xml
           fail_ci_if_error: false

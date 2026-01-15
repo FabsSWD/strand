@@ -15,6 +15,12 @@ impl TokenId {
     }
 }
 
+impl Default for TokenId {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl From<Uuid> for TokenId {
     fn from(value: Uuid) -> Self {
         Self(value)

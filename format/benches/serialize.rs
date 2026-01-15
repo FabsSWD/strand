@@ -2,35 +2,9 @@ use std::collections::HashMap;
 use std::f64::consts::PI;
 
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
-use serde::Serialize;
 use uuid::Uuid;
 
 use toon_format::{Metadata, Serializer, Token, TokenId, Value};
-
-#[derive(Clone, Serialize)]
-enum BenchValue {
-    Int(i64),
-    Float(f64),
-    String(String),
-    Bool(bool),
-    Null,
-    Array(Vec<BenchValue>),
-    Object(HashMap<String, BenchValue>),
-}
-
-#[derive(Clone, Serialize)]
-struct BenchMetadata {
-    created_at_ms: u64,
-    flags: u32,
-}
-
-#[derive(Clone, Serialize)]
-struct BenchToken {
-    version: u8,
-    id: [u8; 16],
-    value: BenchValue,
-    metadata: BenchMetadata,
-}
 
 fn build_sample_value() -> Value {
     let mut obj = HashMap::new();
@@ -49,27 +23,6 @@ fn build_sample_value() -> Value {
     Value::Object(obj)
 }
 
-fn build_sample_bench_value() -> BenchValue {
-    let mut obj = HashMap::new();
-    obj.insert("name".to_string(), BenchValue::String("strand".to_string()));
-    obj.insert("count".to_string(), BenchValue::Int(123456));
-    obj.insert("enabled".to_string(), BenchValue::Bool(true));
-    obj.insert(
-        "items".to_string(),
-        BenchValue::Array(vec![
-            BenchValue::Null,
-            BenchValue::Float(PI),
-            BenchValue::String("hello".to_string()),
-            BenchValue::Array(vec![
-                BenchValue::Int(-1),
-                BenchValue::Int(0),
-                BenchValue::Int(1),
-            ]),
-        ]),
-    );
-    BenchValue::Object(obj)
-}
-
 fn build_token() -> Token {
     let id = TokenId::from(Uuid::from_bytes([9u8; 16]));
     Token::new(id, build_sample_value(), Metadata::new(0, 0))
@@ -84,22 +37,9 @@ fn build_json_value() -> serde_json::Value {
     })
 }
 
-fn build_bincode_token() -> BenchToken {
-    BenchToken {
-        version: 1,
-        id: [9u8; 16],
-        value: build_sample_bench_value(),
-        metadata: BenchMetadata {
-            created_at_ms: 0,
-            flags: 0,
-        },
-    }
-}
-
 fn bench_serialize(c: &mut Criterion) {
     let token = build_token();
     let json_value = build_json_value();
-    let bincode_token = build_bincode_token();
 
     let serializer = Serializer::new();
 
@@ -109,10 +49,6 @@ fn bench_serialize(c: &mut Criterion) {
 
     c.bench_function("serde_json::to_vec", |b| {
         b.iter(|| serde_json::to_vec(black_box(&json_value)).unwrap())
-    });
-
-    c.bench_function("bincode::serialize", |b| {
-        b.iter(|| bincode::serialize(black_box(&bincode_token)).unwrap())
     });
 }
 

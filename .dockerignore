@@ -1,0 +1,44 @@
+# Git
+.git
+.gitignore
+.gitattributes
+
+# Rust build artifacts
+target/
+**/*.rs.bk
+*.pdb
+
+# Cargo files (keep Cargo.toml and Cargo.lock)
+Cargo.lock
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Documentation
+docs/
+*.md
+LICENSE*
+
+# CI/CD
+.github/
+.gitlab-ci.yml
+
+# Test data
+tests/fixtures/
+benches/
+
+# Logs
+*.log
+
+# Docker
+Dockerfile*
+docker-compose*.yml
+.dockerignore

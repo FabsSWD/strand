@@ -6,6 +6,15 @@ pub struct Metadata {
     pub flags: u32,
 }
 
+impl Metadata {
+    pub fn new(created_at_ms: u64, flags: u32) -> Self {
+        Self {
+            created_at_ms,
+            flags,
+        }
+    }
+}
+
 impl Default for Metadata {
     fn default() -> Self {
         Self {

@@ -89,5 +89,5 @@ jobs:
           for manifest in cli/Cargo.toml database/Cargo.toml format/Cargo.toml; do
             manifest_abs="$(pwd)/${manifest}"
             echo "## cargo-geiger: ${manifest_abs}"
-            cargo geiger --manifest-path "${manifest_abs}" --output-format GitHubMarkdown
+            cargo geiger --manifest-path "${manifest_abs}" --output-format GitHubMarkdown --forbid-only
           done

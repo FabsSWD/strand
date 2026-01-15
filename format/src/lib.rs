@@ -1,3 +1,5 @@
+#![forbid(unsafe_code)]
+
 pub mod spec;
 pub mod types;
 

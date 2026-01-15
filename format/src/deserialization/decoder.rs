@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use crate::{constants, TokenRef, TokenRefStrength, TokenId, Value};
+use crate::{constants, TokenId, TokenRef, TokenRefStrength, Value};
 
 use super::deserializer::DeserializeError;
 use super::reader::ByteReader;

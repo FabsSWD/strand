@@ -25,7 +25,15 @@ where
     let mut visited: HashSet<TokenId> = HashSet::new();
     let mut stack: Vec<TokenId> = Vec::new();
 
-    visit_token(root, &mut loader, &mut get, &mut insert, &mut visiting, &mut visited, &mut stack)
+    visit_token(
+        root,
+        &mut loader,
+        &mut get,
+        &mut insert,
+        &mut visiting,
+        &mut visited,
+        &mut stack,
+    )
 }
 
 fn visit_token<F, Get, Insert>(
@@ -84,7 +92,7 @@ where
 
 fn collect_refs(value: &Value, out: &mut Vec<TokenRef>) {
     match value {
-        Value::Ref(r) => out.push(r.clone()),
+        Value::Ref(r) => out.push(*r),
         Value::Array(items) => {
             for item in items {
                 collect_refs(item, out);

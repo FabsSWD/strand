@@ -2,7 +2,9 @@ use crc32fast::Hasher;
 use std::collections::HashMap;
 use uuid::Uuid;
 
-use toon_format::{constants, Metadata, Serializer, Token, TokenId, TokenRef, TokenRefStrength, Value};
+use toon_format::{
+    constants, Metadata, Serializer, Token, TokenId, TokenRef, TokenRefStrength, Value,
+};
 
 fn crc32(bytes: &[u8]) -> u32 {
     let mut hasher = Hasher::new();
@@ -229,7 +231,9 @@ fn serialize_ref_layout_and_checksum() {
     let actual = u32::from_le_bytes(bytes[checksum_offset..].try_into().unwrap());
     assert_eq!(actual, expected);
 
-    let decoded = toon_format::Deserializer::new(&bytes).deserialize().unwrap();
+    let decoded = toon_format::Deserializer::new(&bytes)
+        .deserialize()
+        .unwrap();
     match decoded.value() {
         Value::Ref(r) => {
             assert_eq!(r.id(), target);

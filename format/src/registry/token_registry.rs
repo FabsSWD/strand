@@ -67,7 +67,11 @@ impl TokenRegistry {
         Ok(Some(self.insert(loaded)))
     }
 
-    pub fn ensure_loaded_and_acyclic<F>(&self, root: TokenId, loader: F) -> Result<(), RegistryError>
+    pub fn ensure_loaded_and_acyclic<F>(
+        &self,
+        root: TokenId,
+        loader: F,
+    ) -> Result<(), RegistryError>
     where
         F: FnMut(TokenId) -> Option<Token>,
     {

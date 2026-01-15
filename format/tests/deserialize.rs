@@ -3,7 +3,10 @@ use std::collections::HashMap;
 use crc32fast::Hasher;
 use uuid::Uuid;
 
-use toon_format::{DeserializeError, Deserializer, Metadata, Serializer, Token, TokenId, TokenRef, TokenRefStrength, Value};
+use toon_format::{
+    DeserializeError, Deserializer, Metadata, Serializer, Token, TokenId, TokenRef,
+    TokenRefStrength, Value,
+};
 
 fn crc32(bytes: &[u8]) -> u32 {
     let mut hasher = Hasher::new();
@@ -123,4 +126,41 @@ fn layout_provides_payload_and_checksum_ranges() {
     assert_eq!(layout.payload_range.end, bytes.len() - 4);
     assert_eq!(layout.checksum_range.start, bytes.len() - 4);
     assert_eq!(layout.checksum_range.end, bytes.len());
+}
+
+fn build_bytes(type_marker: u8, payload: &[u8]) -> Vec<u8> {
+    let version = toon_format::constants::FORMAT_VERSION;
+    let id = [55u8; 16];
+    let payload_len = payload.len() as u32;
+
+    let mut bytes = Vec::new();
+    bytes.push(version);
+    bytes.extend_from_slice(&id);
+    bytes.push(type_marker);
+    bytes.extend_from_slice(&payload_len.to_le_bytes());
+    bytes.extend_from_slice(payload);
+
+    let checksum = crc32(&bytes);
+    bytes.extend_from_slice(&checksum.to_le_bytes());
+    bytes
+}
+
+#[test]
+fn deserialize_rejects_invalid_int_payload_len() {
+    let payload = [0u8; 7];
+    let bytes = build_bytes(toon_format::constants::TYPE_INT64, &payload);
+
+    let err = Deserializer::new(&bytes).deserialize().unwrap_err();
+    assert_eq!(err, DeserializeError::InvalidLength);
+}
+
+#[test]
+fn deserialize_rejects_invalid_reference_strength() {
+    let mut payload = [0u8; 17];
+    payload[0] = 2; // invalid strength
+
+    let bytes = build_bytes(toon_format::constants::TYPE_REF, &payload);
+
+    let err = Deserializer::new(&bytes).deserialize().unwrap_err();
+    assert_eq!(err, DeserializeError::InvalidReferenceStrength);
 }

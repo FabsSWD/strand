@@ -61,12 +61,9 @@ fn bench_registry_acyclic_traversal(c: &mut Criterion) {
     let token_a = Token::new(
         a,
         Value::Object(
-            [(
-                "b".to_string(),
-                Value::Ref(TokenRef::new(b)),
-            )]
-            .into_iter()
-            .collect::<HashMap<_, _>>(),
+            [("b".to_string(), Value::Ref(TokenRef::new(b)))]
+                .into_iter()
+                .collect::<HashMap<_, _>>(),
         ),
         Metadata::new(0, 0),
     );
@@ -74,12 +71,9 @@ fn bench_registry_acyclic_traversal(c: &mut Criterion) {
     let token_b = Token::new(
         b,
         Value::Object(
-            [(
-                "c".to_string(),
-                Value::Ref(TokenRef::new(c_id)),
-            )]
-            .into_iter()
-            .collect::<HashMap<_, _>>(),
+            [("c".to_string(), Value::Ref(TokenRef::new(c_id)))]
+                .into_iter()
+                .collect::<HashMap<_, _>>(),
         ),
         Metadata::new(0, 0),
     );
@@ -91,9 +85,18 @@ fn bench_registry_acyclic_traversal(c: &mut Criterion) {
     registry.register(token_c);
 
     c.bench_function("registry_ensure_loaded_and_acyclic_small", |b| {
-        b.iter(|| registry.ensure_loaded_and_acyclic(black_box(a), |_id| None).unwrap())
+        b.iter(|| {
+            registry
+                .ensure_loaded_and_acyclic(black_box(a), |_id| None)
+                .unwrap()
+        })
     });
 }
 
-criterion_group!(benches, bench_registry_get_10k, bench_registry_resolve_ref_10k, bench_registry_acyclic_traversal);
+criterion_group!(
+    benches,
+    bench_registry_get_10k,
+    bench_registry_resolve_ref_10k,
+    bench_registry_acyclic_traversal
+);
 criterion_main!(benches);

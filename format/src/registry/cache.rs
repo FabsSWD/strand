@@ -65,3 +65,31 @@ where
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::LruCache;
+
+    #[test]
+    fn unbounded_cache_does_not_evict() {
+        let mut cache = LruCache::new_unbounded();
+        cache.insert(1usize, "a");
+        cache.insert(2usize, "b");
+
+        assert_eq!(cache.get_cloned(&1), Some("a"));
+        assert_eq!(cache.get_cloned(&2), Some("b"));
+    }
+
+    #[test]
+    fn touch_moves_existing_key_to_back() {
+        let mut cache = LruCache::with_max_entries(10);
+        cache.insert(1usize, "a");
+        cache.insert(2usize, "b");
+
+        // Touching an existing key should remove it from its current position and push it back.
+        assert_eq!(cache.get_cloned(&1), Some("a"));
+        // Re-inserting the same key should also exercise the remove-then-push path.
+        cache.insert(1usize, "a2");
+        assert_eq!(cache.get_cloned(&1), Some("a2"));
+    }
+}

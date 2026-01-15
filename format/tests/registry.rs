@@ -1,6 +1,8 @@
 use uuid::Uuid;
 
-use toon_format::{Metadata, RegistryError, Token, TokenId, TokenRef, TokenRefStrength, TokenRegistry, Value};
+use toon_format::{
+    Metadata, RegistryError, Token, TokenId, TokenRef, TokenRefStrength, TokenRegistry, Value,
+};
 
 #[test]
 fn can_register_and_resolve() {
@@ -35,17 +37,31 @@ fn resolve_or_load_inserts_loaded_token() {
 
     let token = registry
         .resolve_ref_or_load(&r, |token_id| {
-            Some(Token::new(
-                token_id,
-                Value::Int(42),
-                Metadata::new(0, 0),
-            ))
+            Some(Token::new(token_id, Value::Int(42), Metadata::new(0, 0)))
         })
         .unwrap()
         .expect("strong ref should load");
 
     assert_eq!(token.id(), id);
     assert_eq!(registry.get(id).unwrap().id(), token.id());
+}
+
+#[test]
+fn resolve_or_load_returns_cached_without_calling_loader() {
+    let registry = TokenRegistry::new();
+
+    let id = TokenId::from(Uuid::from_bytes([40u8; 16]));
+    registry.register(Token::new(id, Value::Int(123), Metadata::new(0, 0)));
+
+    let r = TokenRef::new(id);
+    let token = registry
+        .resolve_ref_or_load(&r, |_token_id| {
+            panic!("loader should not be called when cached")
+        })
+        .unwrap()
+        .expect("cached token should be returned");
+
+    assert_eq!(token.id(), id);
 }
 
 #[test]
@@ -56,7 +72,9 @@ fn weak_ref_missing_does_not_load() {
     let r = TokenRef::weak(id);
 
     let loaded = registry
-        .resolve_ref_or_load(&r, |_token_id| panic!("loader should not be called for weak refs"))
+        .resolve_ref_or_load(&r, |_token_id| {
+            panic!("loader should not be called for weak refs")
+        })
         .unwrap();
 
     assert!(loaded.is_none());
@@ -114,13 +132,99 @@ fn ensure_loaded_and_acyclic_detects_cycles() {
     registry.register(token_a);
     registry.register(token_b);
 
-    let err = registry.ensure_loaded_and_acyclic(a, |_id| None).unwrap_err();
+    let err = registry
+        .ensure_loaded_and_acyclic(a, |_id| None)
+        .unwrap_err();
     match err {
         RegistryError::CircularReference(ids) => {
             assert!(!ids.is_empty());
         }
         other => panic!("unexpected error: {other:?}"),
     }
+}
+
+#[test]
+fn ensure_loaded_and_acyclic_errors_if_root_missing_and_loader_returns_none() {
+    let registry = TokenRegistry::new();
+
+    let root = TokenId::from(Uuid::from_bytes([41u8; 16]));
+    let err = registry
+        .ensure_loaded_and_acyclic(root, |_id| None)
+        .unwrap_err();
+    assert_eq!(err, RegistryError::NotFound(root));
+}
+
+#[test]
+fn ensure_loaded_and_acyclic_errors_if_strong_ref_missing_and_loader_returns_none() {
+    let registry = TokenRegistry::new();
+
+    let a = TokenId::from(Uuid::from_bytes([42u8; 16]));
+    let missing = TokenId::from(Uuid::from_bytes([43u8; 16]));
+
+    registry.register(Token::new(
+        a,
+        Value::Ref(TokenRef::new(missing)),
+        Metadata::new(0, 0),
+    ));
+
+    let err = registry
+        .ensure_loaded_and_acyclic(a, |_id| None)
+        .unwrap_err();
+    assert_eq!(err, RegistryError::NotFound(missing));
+}
+
+#[test]
+fn ensure_loaded_and_acyclic_handles_shared_subgraphs_without_false_cycles() {
+    let registry = TokenRegistry::new();
+
+    // A -> [B, C], B -> D, C -> D
+    let a = TokenId::from(Uuid::from_bytes([44u8; 16]));
+    let b = TokenId::from(Uuid::from_bytes([45u8; 16]));
+    let c = TokenId::from(Uuid::from_bytes([46u8; 16]));
+    let d = TokenId::from(Uuid::from_bytes([47u8; 16]));
+
+    registry.register(Token::new(d, Value::Int(7), Metadata::new(0, 0)));
+    registry.register(Token::new(
+        b,
+        Value::Ref(TokenRef::new(d)),
+        Metadata::new(0, 0),
+    ));
+    registry.register(Token::new(
+        c,
+        Value::Ref(TokenRef::new(d)),
+        Metadata::new(0, 0),
+    ));
+    registry.register(Token::new(
+        a,
+        Value::Array(vec![
+            Value::Ref(TokenRef::new(b)),
+            Value::Ref(TokenRef::new(c)),
+        ]),
+        Metadata::new(0, 0),
+    ));
+
+    registry
+        .ensure_loaded_and_acyclic(a, |_id| None)
+        .expect("shared subgraphs should not be reported as cycles");
+}
+
+#[test]
+fn ensure_loaded_and_acyclic_traverses_existing_weak_refs() {
+    let registry = TokenRegistry::new();
+
+    let a = TokenId::from(Uuid::from_bytes([48u8; 16]));
+    let b = TokenId::from(Uuid::from_bytes([49u8; 16]));
+
+    registry.register(Token::new(b, Value::Int(9), Metadata::new(0, 0)));
+    registry.register(Token::new(
+        a,
+        Value::Ref(TokenRef::weak(b)),
+        Metadata::new(0, 0),
+    ));
+
+    registry
+        .ensure_loaded_and_acyclic(a, |_id| None)
+        .expect("existing weak refs should be traversable");
 }
 
 #[test]
